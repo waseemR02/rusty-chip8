@@ -1,3 +1,4 @@
+use colored::*;
 use std::fs;
 
 pub fn disasm(filepath: String) -> Result<(), Box<dyn std::error::Error>> {
@@ -28,152 +29,152 @@ pub fn decode(instruction: [&u8; 2], pc: u16) -> () {
         0x0 => {
             if *instruction[0] == 0x00 {
                 match instruction[1] {
-                    0xE0 => println!("{:<10}", "CLS"),
-                    0xEE => println!("{:<10}", "RTS"),
-                    _ => println!("UNKNOWN 0"),
+                    0xE0 => println!("{:<10}", "CLS".yellow()),
+                    0xEE => println!("{:<10}", "RTS".yellow()),
+                    _ => println!("{}", "UNKNOWN 0".red()),
                 }
             } else {
-                println!("UNKNOWN 0")
+                println!("{}", "UNKNOWN 0".red())
             }
         }
         0x1 => println!(
             "{:<10} ${:X}{:02X}",
-            "JUMP",
+            "JUMP".yellow(),
             instruction[0] & 0xF,
             instruction[1]
         ),
         0x2 => println!(
             "{:<10} ${:X}{:02X}",
-            "CALL",
+            "CALL".yellow(),
             instruction[0] & 0xF,
             instruction[1]
         ),
         0x3 => println!(
             "{:<10} V{:X}, #${:02X}",
-            "SKIP.EQ",
+            "SKIP.EQ".yellow(),
             instruction[0] & 0xF,
             instruction[1]
         ),
         0x4 => println!(
             "{:<10} V{:X}, #${:02X}",
-            "SKIP.NE",
+            "SKIP.NE".yellow(),
             instruction[0] & 0xF,
             instruction[1]
         ),
         0x5 => println!(
             "{:<10} V{:X}, V{:X}",
-            "SKIP.EQ",
+            "SKIP.EQ".yellow(),
             instruction[0] & 0xF,
             (instruction[1] & 0xF0) >> 4
         ),
         0x6 => println!(
             "{:<10} V{:X}, #${:02X}",
-            "MVI",
+            "MVI".yellow(),
             instruction[0] & 0xF,
             instruction[1]
         ),
         0x7 => println!(
             "{:<10} V{:X}, #${:02X}",
-            "ADI",
+            "ADI".yellow(),
             instruction[0] & 0xF,
             instruction[1]
         ),
         0x8 => match instruction[1] & 0xF {
             0x0 => println!(
                 "{:<10} V{:X}, V{:X}",
-                "MOV",
+                "MOV".yellow(),
                 instruction[0] & 0xF,
                 instruction[1] >> 4,
             ),
             0x1 => println!(
                 "{:<10} V{:X}, V{:X}",
-                "OR",
+                "OR".yellow(),
                 instruction[0] & 0xF,
                 instruction[1] >> 4
             ),
             0x2 => println!(
                 "{:<10} V{:X}, V{:X}",
-                "AND",
+                "AND".yellow(),
                 instruction[0] & 0xF,
                 instruction[1] >> 4
             ),
             0x3 => println!(
                 "{:<10} V{:X}, V{:X}",
-                "XOR",
+                "XOR".yellow(),
                 instruction[0] & 0xF,
                 instruction[1] >> 4
             ),
             0x4 => println!(
                 "{:<10} V{:X}, V{:X}",
-                "ADD.",
+                "ADD.".yellow(),
                 instruction[0] & 0xF,
                 instruction[1] >> 4
             ),
             0x5 => println!(
                 "{:<10} V{:X}, V{:X}",
-                "SUB.",
+                "SUB.".yellow(),
                 instruction[0] & 0xF,
                 instruction[1] >> 4
             ),
-            0x6 => println!("{:<10} V{:X}", "SHR.", instruction[0] & 0xF,),
+            0x6 => println!("{:<10} V{:X}", "SHR.".yellow(), instruction[0] & 0xF,),
             0x7 => println!(
                 "{:<10} V{:X}, V{:X}",
-                "SUBN.",
+                "SUBN.".yellow(),
                 instruction[0] & 0xF,
                 instruction[1] >> 4
             ),
-            0xE => println!("{:<10} V{:X}", "SHL.", instruction[0] & 0xF,),
-            _ => println!("UNKNOWN 8"),
+            0xE => println!("{:<10} V{:X}", "SHL.".yellow(), instruction[0] & 0xF,),
+            _ => println!("{}", "UNKNOWN 8".red()),
         },
         0x9 => println!(
             "{:<10} V{:X}, V{:X}",
-            "SKIP.NE",
+            "SKIP.NE".yellow(),
             instruction[0] & 0xF,
             instruction[1] >> 4
         ),
         0xA => println!(
             "{:<10} I, #${:X}{:02X}",
-            "MVI",
+            "MVI".yellow(),
             instruction[0] & 0xF,
             instruction[1]
         ),
         0xB => println!(
             "{:<10} #${:X}{:02X}(V0)",
-            "JUMP",
+            "JUMP".yellow(),
             instruction[0] & 0xF,
             instruction[1]
         ),
         0xC => println!(
             "{:<10} V{:X}, #${:02X}",
-            "RNDMSK",
+            "RNDMSK".yellow(),
             instruction[0] & 0xF,
             instruction[1]
         ),
         0xD => println!(
             "{:<10} V{:X}, V{:X}, #${:X}",
-            "DRAW",
+            "DRAW".yellow(),
             instruction[0] & 0xF,
             instruction[1] >> 4,
             instruction[1] & 0xF
         ),
         0xE => match instruction[1] {
-            0x9E => println!("{:<10} V{:X}", "SKIPKEY.Y", instruction[0] & 0xF),
-            0xA1 => println!("{:<10} V{:X}", "SKIPKEY.N", instruction[0] & 0xF),
-            _ => println!("UNKNOWN E"),
+            0x9E => println!("{:<10} V{:X}", "SKIPKEY.Y.yellow()", instruction[0] & 0xF),
+            0xA1 => println!("{:<10} V{:X}", "SKIPKEY.N.yellow()", instruction[0] & 0xF),
+            _ => println!("{}", "UNKNOWN E".red()),
         },
         0xF => match instruction[1] {
-            0x07 => println!("{:<10} V{:X}, DELAY", "MOV", instruction[0] & 0xF),
-            0x0A => println!("{:<10} V{:X}", "KEY", instruction[0] & 0xF),
-            0x15 => println!("{:<10} DELAY, V{:X}", "MOV", instruction[0] & 0xF),
-            0x18 => println!("{:<10} SOUND, V{:X}", "MOV", instruction[0] & 0xF),
-            0x1E => println!("{:<10} I, V{:X}", "ADI", instruction[0] & 0xF),
-            0x29 => println!("{:<10} I, V{:X}", "SPRITECHAR", instruction[0] & 0xF),
-            0x33 => println!("{:<10} (I), V{:X}", "MOVBCD", instruction[0] & 0xF),
-            0x55 => println!("{:<10} (I), V0-V{:X}", "MOVM", instruction[0] & 0xF),
-            0x65 => println!("{:<10} V0-V{:X}, (I)", "MOVM", instruction[0] & 0xF),
-            _ => println!("UNKNOWN F"),
+            0x07 => println!("{:<10} V{:X}, DELAY", "MOV".yellow(), instruction[0] & 0xF),
+            0x0A => println!("{:<10} V{:X}", "KEY".yellow(), instruction[0] & 0xF),
+            0x15 => println!("{:<10} DELAY, V{:X}", "MOV".yellow(), instruction[0] & 0xF),
+            0x18 => println!("{:<10} SOUND, V{:X}", "MOV".yellow(), instruction[0] & 0xF),
+            0x1E => println!("{:<10} I, V{:X}", "ADI".yellow(), instruction[0] & 0xF),
+            0x29 => println!("{:<10} I, V{:X}", "SPRITECHAR".yellow(), instruction[0] & 0xF),
+            0x33 => println!("{:<10} (I), V{:X}", "MOVBCD".yellow(), instruction[0] & 0xF),
+            0x55 => println!("{:<10} (I), V0-V{:X}", "MOVM".yellow(), instruction[0] & 0xF),
+            0x65 => println!("{:<10} V0-V{:X}, (I)", "MOVM".yellow(), instruction[0] & 0xF),
+            _ => println!("{}", "UNKNOWN F".red()),
         },
-        _ => println!("UNKNOWN I"),
+        _ => println!("{}", "UNKNOWN I".red()),
     }
 
     ()
