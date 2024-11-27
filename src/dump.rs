@@ -2,32 +2,32 @@ use colored::*;
 use std::fs;
 
 pub fn disasm(filepath: String) -> Result<(), Box<dyn std::error::Error>> {
-    let buffer = fs::read(&filepath)?;
+    let mut buffer = fs::read(&filepath)?;
+    if (buffer.len() & 1) == 1 {
+        buffer.push(0x00);
+    }
     let mut pc: u16 = 0x200;
+    let mut iter = buffer.chunks(2);
 
     println!("Disassembly of {}:\n", &filepath);
-    for i in (0..buffer.len()).step_by(2) {
-        let instruction = [
-            buffer.get(i).unwrap(),
-            buffer.get(i + 1).unwrap_or_else(|| &0x00),
-        ];
+    for _ in (0..buffer.len()).step_by(2) {
+        let instruction = iter.next().unwrap();
         decode(instruction, pc);
         pc += 0x02;
     }
     Ok(())
 }
 
-pub fn decode(instruction: [&u8; 2], pc: u16) -> () {
+pub fn decode(instruction: &[u8], pc: u16) -> () {
     print!(
         "  {pc:04X}:\t\t {:02X} {:02X}\t",
         instruction[0], instruction[1]
     );
 
     let nibble = instruction[0] >> 4;
-    //println!("\t\t{nibble:02X}");
     match nibble {
         0x0 => {
-            if *instruction[0] == 0x00 {
+            if instruction[0] == 0x00 {
                 match instruction[1] {
                     0xE0 => println!("{:<10}", "CLS".yellow()),
                     0xEE => println!("{:<10}", "RTS".yellow()),
@@ -168,10 +168,22 @@ pub fn decode(instruction: [&u8; 2], pc: u16) -> () {
             0x15 => println!("{:<10} DELAY, V{:X}", "MOV".yellow(), instruction[0] & 0xF),
             0x18 => println!("{:<10} SOUND, V{:X}", "MOV".yellow(), instruction[0] & 0xF),
             0x1E => println!("{:<10} I, V{:X}", "ADI".yellow(), instruction[0] & 0xF),
-            0x29 => println!("{:<10} I, V{:X}", "SPRITECHAR".yellow(), instruction[0] & 0xF),
+            0x29 => println!(
+                "{:<10} I, V{:X}",
+                "SPRITECHAR".yellow(),
+                instruction[0] & 0xF
+            ),
             0x33 => println!("{:<10} (I), V{:X}", "MOVBCD".yellow(), instruction[0] & 0xF),
-            0x55 => println!("{:<10} (I), V0-V{:X}", "MOVM".yellow(), instruction[0] & 0xF),
-            0x65 => println!("{:<10} V0-V{:X}, (I)", "MOVM".yellow(), instruction[0] & 0xF),
+            0x55 => println!(
+                "{:<10} (I), V0-V{:X}",
+                "MOVM".yellow(),
+                instruction[0] & 0xF
+            ),
+            0x65 => println!(
+                "{:<10} V0-V{:X}, (I)",
+                "MOVM".yellow(),
+                instruction[0] & 0xF
+            ),
             _ => println!("{}", "UNKNOWN F".red()),
         },
         _ => println!("{}", "UNKNOWN I".red()),
