@@ -1,6 +1,7 @@
 use clap::{Parser, Subcommand};
 
 mod dump;
+mod instructions;
 
 #[derive(Parser)]
 #[command(version, about, long_about=None)]
