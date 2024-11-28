@@ -1,5 +1,7 @@
+use chip::Chip;
 use clap::{Parser, Subcommand};
 
+mod chip;
 mod dump;
 mod instructions;
 
@@ -14,7 +16,12 @@ struct Cli {
 #[derive(Subcommand)]
 enum Commands {
     /// Disassembles the Chip8 ROM file
-    Dump { filepath: String },
+    Dump {
+        filepath: String,
+    },
+    Play {
+        filepath: String,
+    },
 }
 
 fn main() {
@@ -25,6 +32,10 @@ fn main() {
             Commands::Dump { filepath } => {
                 dump::disasm(filepath)
                     .unwrap_or_else(|err| eprintln!("Error disassembling: {err}"));
+            }
+            Commands::Play { filepath } => {
+                let mut chip = Chip::new();
+                let _ = chip.load(filepath);
             }
         }
     }
