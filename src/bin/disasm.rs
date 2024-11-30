@@ -1,8 +1,5 @@
-use std::process;
-
 use clap::Parser;
-use macroquad::prelude::*;
-use rusty_chip8::chip::Chip;
+use rusty_chip8::dump;
 
 #[derive(Parser)]
 #[command(version, about, long_about=None)]
@@ -12,14 +9,11 @@ struct Cli {
     filepath: String,
 }
 
-#[macroquad::main("rusty-chip8")]
-async fn main() {
+fn main() {
     let cli = Cli::parse();
 
-    let mut chip = Chip::new();
-    if let Err(e) = chip.load(cli.filepath) {
-        eprintln!("Error loading the rom: {e}");
-        process::exit(1);
+    if let Err(e) = dump::disasm(cli.filepath) {
+        eprintln!("Error disassembling: {e}")
     }
 }
 
