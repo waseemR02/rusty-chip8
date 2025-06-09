@@ -1,5 +1,3 @@
-use macroquad::{color::BLACK, text, texture, window::clear_background};
-
 use crate::instructions::Instruction;
 
 const MEM_SIZE: usize = 4096;
@@ -64,7 +62,7 @@ impl Chip {
     }
 
     fn cls(&mut self) {
-        clear_background(BLACK);
+        // TODO: Add clear screen logic
         self.pc += 0x02;
     }
     fn jump(&mut self, instruction: Instruction) {

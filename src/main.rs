@@ -1,7 +1,6 @@
 use std::process;
 
 use clap::Parser;
-use macroquad::prelude::*;
 use rusty_chip8::chip::Chip;
 
 #[derive(Parser)]
@@ -12,8 +11,7 @@ struct Cli {
     filepath: String,
 }
 
-#[macroquad::main("rusty-chip8")]
-async fn main() {
+fn main() {
     let cli = Cli::parse();
 
     let mut chip = Chip::new();
