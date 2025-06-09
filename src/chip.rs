@@ -13,6 +13,12 @@ pub struct Chip {
     pub mem: [u8; MEM_SIZE],
 }
 
+impl Default for Chip {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Chip {
     pub fn new() -> Chip {
         Chip {
@@ -39,7 +45,7 @@ impl Chip {
         Ok(())
     }
 
-    pub fn interpret(&mut self, instruction: Instruction) -> () {
+    pub fn interpret(&mut self, instruction: Instruction) {
         match instruction.f_nibble {
             0x0 => {
                 if instruction.x == 0x00 {

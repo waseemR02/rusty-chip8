@@ -20,7 +20,7 @@ pub fn disasm(filepath: String) -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-pub fn decode(instruct: Instruction, pc: u16) -> () {
+pub fn decode(instruct: Instruction, pc: u16) {
     print!("  {pc:04X}:\t\t {:04X}\t", instruct.opcode);
 
     match instruct.f_nibble {
@@ -150,5 +150,5 @@ pub fn decode(instruct: Instruction, pc: u16) -> () {
         _ => println!("{}", "UNKNOWN I".red()),
     }
 
-    ()
+    
 }
