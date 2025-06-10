@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use crate::instructions::Instruction;
+use crate::{dump, instructions::Instruction};
 
 const MEM_SIZE: usize = 4096;
 const START_MEM: u16 = 0x200;
@@ -8,7 +8,8 @@ const START_MEM: u16 = 0x200;
 pub struct Chip {
     pub v: [u8; 16],
     pub i: u16,
-    pub sp: u16,
+    pub stack: [u16; 8],
+    pub sp: usize,
     pub st: u8,
     pub dt: u8,
     pub pc: u16,
@@ -25,7 +26,11 @@ impl Display for Chip {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         writeln!(f, "Chip State: ")?;
         writeln!(f, "   I: {:X}", self.i)?;
-        writeln!(f, "   Stack: {:X}", self.sp)?;
+        writeln!(f, "   SP: {}", self.sp)?;
+        writeln!(f, "   Stack: ")?;
+        self.stack
+            .iter()
+            .try_for_each(|s| writeln!(f, "      {}", s))?;
         writeln!(f, "   Sound Timer: {}", self.st)?;
         writeln!(f, "   Delay Timer: {}", self.dt)?;
         writeln!(f, "   PC: {:X}", self.pc)?;
@@ -42,6 +47,7 @@ impl Chip {
         Chip {
             v: [0; 16],
             i: 0,
+            stack: [0; 8],
             sp: 0,
             st: 0,
             dt: 0,
@@ -148,6 +154,52 @@ impl Chip {
         }
 
         self.pc += 0x02;
+    }
+
+    fn skip_eq(&mut self, instruction: Instruction) {
+        match instruction.f_nibble {
+            0x3 => {
+                if self.v[instruction.x as usize] == instruction.nn {
+                    self.pc += 0x02
+                }
+            }
+            0x5 => {
+                if self.v[instruction.x as usize] == self.v[instruction.y as usize] {
+                    self.pc += 0x02
+                }
+            }
+            _ => eprintln!("UNKNOWN SKIP.EQ"),
+        }
+        self.pc += 0x02
+    }
+
+    fn skip_ne(&mut self, instruction: Instruction) {
+        match instruction.f_nibble {
+            0x4 => {
+                if self.v[instruction.x as usize] != instruction.nn {
+                    self.pc += 0x02
+                }
+            }
+            0x9 => {
+                if self.v[instruction.x as usize] != self.v[instruction.y as usize] {
+                    self.pc += 0x02
+                }
+            }
+            _ => eprintln!("UNKNOWN SKIP.NE"),
+        }
+        self.pc += 0x02
+    }
+
+    fn call(&mut self, instruction: Instruction) {
+        self.sp += 1;
+        self.stack[self.sp] = self.pc;
+        self.pc = instruction.nnn
+    }
+
+    fn rts(&mut self) {
+        self.pc = self.stack[self.sp];
+        self.stack[self.sp] = 0u16;
+        self.sp -= 1
     }
 
     fn not_implemented(&mut self) {
