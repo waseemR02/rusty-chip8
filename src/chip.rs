@@ -70,12 +70,13 @@ impl Chip {
     }
 
     pub fn interpret(&mut self, instruction: Instruction, buffer: &mut [u32]) {
+        dump::decode(&instruction, self.pc);
         match instruction.f_nibble {
             0x0 => {
                 if instruction.x == 0x00 {
                     match instruction.nn {
                         0xE0 => self.cls(buffer),
-                        0xEE => self.not_implemented(),
+                        0xEE => self.rts(),
                         _ => eprintln!("UNKNOWN 0"),
                     }
                 } else {
@@ -87,6 +88,14 @@ impl Chip {
             0x7 => self.adi(instruction),
             0xA => self.mvi(instruction),
             0xD => self.draw(instruction, buffer),
+            0x3 => self.skip_eq(instruction),
+            0x5 => self.skip_eq(instruction),
+            0x4 => self.skip_ne(instruction),
+            0x9 => self.skip_ne(instruction),
+            0x2 => self.call(instruction),
+            0x8 => self.eight_inst(instruction),
+            0xC => self.rndmsk(instruction),
+            0xF => self.f_inst(instruction),
             _ => todo!(),
         }
     }
@@ -99,13 +108,75 @@ impl Chip {
         self.pc = instruction.nnn;
     }
 
-    fn _mov(&mut self, instruction: Instruction) {
-        match instruction.f_nibble {
-            0x8 => self.not_implemented(),
-            0xF => self.not_implemented(),
-            _ => eprintln!("UNKNOWN MOV"),
+    fn eight_inst(&mut self, instruction: Instruction) {
+        match instruction.l_nibble {
+            0x0 => self.v[instruction.x as usize] = self.v[instruction.y as usize],
+            0x1 => self.v[instruction.x as usize] |= self.v[instruction.y as usize],
+            0x2 => self.v[instruction.x as usize] &= self.v[instruction.y as usize],
+            0x3 => self.v[instruction.x as usize] ^= self.v[instruction.y as usize],
+            0x4 => {
+                self.v[instruction.x as usize] = {
+                    self.v[instruction.x as usize]
+                        .checked_add(self.v[instruction.y as usize])
+                        .unwrap_or_else(|| {
+                            self.v[0xF] = 1;
+                            self.v[instruction.x as usize] + self.v[instruction.y as usize]
+                        })
+                }
+            }
+            0x5 => {
+                self.v[instruction.x as usize] = {
+                    self.v[0xF] = 1;
+                    self.v[instruction.x as usize]
+                        .checked_sub(self.v[instruction.y as usize])
+                        .unwrap_or_else(|| {
+                            self.v[0xF] = 0;
+                            self.v[instruction.x as usize] - self.v[instruction.y as usize]
+                        })
+                }
+            }
+            0x6 => {
+                #[cfg(not(feature = "shift"))]
+                {
+                    self.v[instruction.x as usize] = self.v[instruction.y as usize];
+                }
+                self.v[0xF] = self.v[instruction.x as usize] & 1;
+                self.v[instruction.x as usize] >>= 1;
+            }
+            0x7 => {
+                self.v[instruction.x as usize] = {
+                    self.v[0xF] = 1;
+                    self.v[instruction.y as usize]
+                        .checked_sub(self.v[instruction.x as usize])
+                        .unwrap_or_else(|| {
+                            self.v[0xF] = 0;
+                            self.v[instruction.y as usize] - self.v[instruction.x as usize]
+                        })
+                }
+            }
+            0xE => {
+                #[cfg(not(feature = "shift"))]
+                {
+                    self.v[instruction.x as usize] = self.v[instruction.y as usize];
+                }
+                self.v[0xF] = self.v[instruction.x as usize] & (1 << 7);
+                self.v[instruction.x as usize] <<= 1;
+            }
+            _ => eprintln!("UNKNOWN 8"),
         }
-        self.pc += 0x02;
+        self.pc += 0x02
+    }
+
+    fn f_inst(&mut self, instruction: Instruction) {
+        match instruction.nn {
+            0x1E => self.adi(instruction),
+            _ => eprintln!("UNKNOWN F"),
+        }
+    }
+
+    fn rndmsk(&mut self, instruction: Instruction) {
+        self.v[instruction.x as usize] = fastrand::u8(..) & instruction.nn;
+        self.pc += 0x02
     }
 
     fn mvi(&mut self, instruction: Instruction) {
@@ -120,7 +191,7 @@ impl Chip {
     fn adi(&mut self, instruction: Instruction) {
         match instruction.f_nibble {
             0x7 => self.v[instruction.x as usize] += instruction.nn,
-            0xF => self.not_implemented(),
+            0xF => self.i += self.v[instruction.x as usize] as u16,
             _ => eprintln!("UNKNOWN ADI"),
         }
         self.pc += 0x02;
