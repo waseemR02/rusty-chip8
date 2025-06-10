@@ -131,8 +131,8 @@ pub fn decode(instruct: &Instruction, pc: u16) {
             instruct.l_nibble
         ),
         0xE => match instruct.nn {
-            0x9E => println!("{:<10} V{:X}", "SKIPKEY.Y.yellow()", instruct.x),
-            0xA1 => println!("{:<10} V{:X}", "SKIPKEY.N.yellow()", instruct.x),
+            0x9E => println!("{:<10} V{:X}", "SKIPKEY.Y".yellow(), instruct.x),
+            0xA1 => println!("{:<10} V{:X}", "SKIPKEY.N".yellow(), instruct.x),
             _ => println!("{}", "UNKNOWN E".red()),
         },
         0xF => match instruct.nn {
