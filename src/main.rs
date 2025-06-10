@@ -1,7 +1,7 @@
 use std::process;
 
 use clap::{Parser, Subcommand};
-use minifb::{Key, Scale, ScaleMode, Window, WindowOptions};
+use minifb::{Key, KeyRepeat, Scale, ScaleMode, Window, WindowOptions};
 use rusty_chip8::{chip::Chip, dump, instructions::Instruction};
 
 const WIDTH: usize = 64;
@@ -52,7 +52,7 @@ fn main() {
                 },
             )
             .unwrap();
-            window.set_target_fps(60);
+            window.set_target_fps(250);
             let mut chip = Chip::new();
             if let Err(e) = chip.load(filepath.clone()) {
                 eprintln!("Error loading the rom: {e}");
@@ -60,10 +60,14 @@ fn main() {
             }
 
             while window.is_open() && !window.is_key_down(Key::Escape) {
+                // if window.is_key_pressed(Key::J, KeyRepeat::No) {
+                println!("{}", chip);
                 chip.interpret(
                     Instruction::new(&[chip.mem[chip.pc as usize], chip.mem[chip.pc as usize + 1]]),
                     &mut buffer,
+                    &window,
                 );
+                // }
                 window.update_with_buffer(&buffer, WIDTH, HEIGHT).unwrap();
             }
         }

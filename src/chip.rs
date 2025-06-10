@@ -1,5 +1,7 @@
 use std::fmt::Display;
 
+use minifb::{Key, Window};
+
 use crate::{dump, instructions::Instruction};
 
 const MEM_SIZE: usize = 4096;
@@ -30,14 +32,14 @@ impl Display for Chip {
         writeln!(f, "   Stack: ")?;
         self.stack
             .iter()
-            .try_for_each(|s| writeln!(f, "      {}", s))?;
-        writeln!(f, "   Sound Timer: {}", self.st)?;
-        writeln!(f, "   Delay Timer: {}", self.dt)?;
+            .try_for_each(|s| writeln!(f, "      {:X}", s))?;
+        writeln!(f, "   Sound Timer: {:X}", self.st)?;
+        writeln!(f, "   Delay Timer: {:X}", self.dt)?;
         writeln!(f, "   PC: {:X}", self.pc)?;
         self.v
             .iter()
             .enumerate()
-            .try_for_each(|(i, v)| writeln!(f, "   V{}: {}", i, v))?;
+            .try_for_each(|(i, v)| writeln!(f, "   V{:X}: {:X}", i, v))?;
         write!(f, "--------------")
     }
 }
@@ -69,7 +71,7 @@ impl Chip {
         Ok(())
     }
 
-    pub fn interpret(&mut self, instruction: Instruction, buffer: &mut [u32]) {
+    pub fn interpret(&mut self, instruction: Instruction, buffer: &mut [u32], window: &Window) {
         dump::decode(&instruction, self.pc);
         match instruction.f_nibble {
             0x0 => {
@@ -95,8 +97,15 @@ impl Chip {
             0x2 => self.call(instruction),
             0x8 => self.eight_inst(instruction),
             0xC => self.rndmsk(instruction),
-            0xF => self.f_inst(instruction),
+            0xF => self.f_inst(instruction, &window),
+            0xE => self.skipkey(instruction, window),
             _ => todo!(),
+        }
+        if self.dt > 0 {
+            self.dt -= 1
+        }
+        if self.st > 0 {
+            self.st -= 1
         }
     }
 
@@ -167,11 +176,29 @@ impl Chip {
         self.pc += 0x02
     }
 
-    fn f_inst(&mut self, instruction: Instruction) {
+    fn f_inst(&mut self, instruction: Instruction, window: &Window) {
         match instruction.nn {
-            0x1E => self.adi(instruction),
-            _ => eprintln!("UNKNOWN F"),
+            0x1E => {
+                self.adi(instruction);
+                return;
+            }
+            0x07 => self.v[instruction.x as usize] = self.dt,
+            0x15 => self.dt = self.v[instruction.x as usize],
+            0x18 => self.st = self.v[instruction.x as usize],
+            0x0A => {
+                if let Some(key) = window.get_keys().first() {
+                    self.v[instruction.x as usize] = Keypad(*key).into();
+                } else {
+                    self.pc -= 0x02;
+                }
+            }
+            0x55 => (0..=instruction.x)
+                .for_each(|x| self.mem[(self.i + x as u16) as usize] = self.v[x as usize]),
+            0x65 => (0..=instruction.x)
+                .for_each(|x| self.v[x as usize] = self.mem[(self.i + x as u16) as usize]),
+            _ => todo!(),
         }
+        self.pc += 0x02
     }
 
     fn rndmsk(&mut self, instruction: Instruction) {
@@ -261,21 +288,90 @@ impl Chip {
         self.pc += 0x02
     }
 
+    fn skipkey(&mut self, instruction: Instruction, window: &Window) {
+        let keypad: Keypad = self.v[instruction.x as usize].into();
+        match instruction.nn {
+            0x9E => {
+                if window.is_key_down(keypad.0) {
+                    self.pc += 0x02
+                }
+            }
+            0xA1 => {
+                if !window.is_key_down(keypad.0) {
+                    println!("Not pressed {}", self.v[instruction.x as usize]);
+                    self.pc += 0x02
+                }
+            }
+            _ => eprintln!("UKNOWN E"),
+        }
+        self.pc += 0x02
+    }
+
     fn call(&mut self, instruction: Instruction) {
+        self.stack[self.sp] = self.pc + 0x2;
         self.sp += 1;
-        self.stack[self.sp] = self.pc;
-        self.pc = instruction.nnn
+        self.pc = instruction.nnn;
     }
 
     fn rts(&mut self) {
-        self.pc = self.stack[self.sp];
-        self.stack[self.sp] = 0u16;
-        self.sp -= 1
+        self.pc = self.stack[self.sp - 1];
+        self.stack[self.sp - 1] = 0u16;
+        self.sp -= 1;
     }
 
     fn not_implemented(&mut self) {
         println!("Opcode not implemented yet!.");
         self.pc += 0x02;
+    }
+}
+
+pub struct Keypad(Key);
+
+impl From<u8> for Keypad {
+    fn from(value: u8) -> Self {
+        match value {
+            0x0 => Keypad(Key::Key1),
+            0x1 => Keypad(Key::Key2),
+            0x2 => Keypad(Key::Key3),
+            0x3 => Keypad(Key::Key4),
+            0x4 => Keypad(Key::Q),
+            0x5 => Keypad(Key::W),
+            0x6 => Keypad(Key::E),
+            0x7 => Keypad(Key::R),
+            0x8 => Keypad(Key::A),
+            0x9 => Keypad(Key::S),
+            0xA => Keypad(Key::D),
+            0xB => Keypad(Key::F),
+            0xC => Keypad(Key::Z),
+            0xD => Keypad(Key::X),
+            0xE => Keypad(Key::C),
+            0xF => Keypad(Key::V),
+            _ => panic!("can't convert illegal key {}", value),
+        }
+    }
+}
+
+impl From<Keypad> for u8 {
+    fn from(value: Keypad) -> Self {
+        match value.0 {
+            Key::Key1 => 0x0,
+            Key::Key2 => 0x1,
+            Key::Key3 => 0x2,
+            Key::Key4 => 0x3,
+            Key::Q => 0x4,
+            Key::W => 0x5,
+            Key::E => 0x6,
+            Key::R => 0x7,
+            Key::A => 0x8,
+            Key::S => 0x9,
+            Key::D => 0xA,
+            Key::F => 0xB,
+            Key::Z => 0xC,
+            Key::X => 0xD,
+            Key::C => 0xE,
+            Key::V => 0xF,
+            _ => panic!("can't convert illegal key {:#?}", value.0),
+        }
     }
 }
 
@@ -289,12 +385,17 @@ fn from_u8_rgb(r: u8, g: u8, b: u8) -> u32 {
 mod tests {
 
     use super::{Chip, Instruction};
+    use minifb::{Window, WindowOptions};
 
     #[test]
     fn test_jump() {
         let mut chip8 = Chip::new();
         let mut buffer = vec![0u32, 64 * 32];
-        chip8.interpret(Instruction::new(&[0x12, 0x28]), &mut buffer);
+        chip8.interpret(
+            Instruction::new(&[0x12, 0x28]),
+            &mut buffer,
+            &Window::new("Test", 1, 1, WindowOptions::default()).unwrap(),
+        );
 
         assert_eq!(chip8.pc, 0x228);
     }
@@ -304,7 +405,11 @@ mod tests {
         let mut chip8 = Chip::new();
 
         let mut buffer = vec![0u32, 64 * 32];
-        chip8.interpret(Instruction::new(&[0x60, 0x0C]), &mut buffer);
+        chip8.interpret(
+            Instruction::new(&[0x60, 0x0C]),
+            &mut buffer,
+            &Window::new("Test", 1, 1, WindowOptions::default()).unwrap(),
+        );
 
         assert_eq!(chip8.v[0], 0x0C);
     }
@@ -314,7 +419,11 @@ mod tests {
         let mut chip8 = Chip::new();
 
         let mut buffer = vec![0u32, 64 * 32];
-        chip8.interpret(Instruction::new(&[0xA2, 0x2A]), &mut buffer);
+        chip8.interpret(
+            Instruction::new(&[0xA2, 0x2A]),
+            &mut buffer,
+            &Window::new("Test", 1, 1, WindowOptions::default()).unwrap(),
+        );
 
         assert_eq!(chip8.i, 0x22A);
     }
@@ -324,7 +433,11 @@ mod tests {
         let mut chip8 = Chip::new();
 
         let mut buffer = vec![0u32, 64 * 32];
-        chip8.interpret(Instruction::new(&[0x70, 0x09]), &mut buffer);
+        chip8.interpret(
+            Instruction::new(&[0x70, 0x09]),
+            &mut buffer,
+            &Window::new("Test", 1, 1, WindowOptions::default()).unwrap(),
+        );
 
         assert_eq!(chip8.v[0], 0x09);
     }
