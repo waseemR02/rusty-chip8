@@ -14,13 +14,13 @@ pub fn disasm(filepath: String) -> Result<(), Box<dyn std::error::Error>> {
     println!("Disassembly of {}:\n", &filepath);
     for _ in (0..buffer.len()).step_by(2) {
         let instruction = Instruction::new(iter.next().unwrap());
-        decode(instruction, pc);
+        decode(&instruction, pc);
         pc += 0x02;
     }
     Ok(())
 }
 
-pub fn decode(instruct: Instruction, pc: u16) {
+pub fn decode(instruct: &Instruction, pc: u16) {
     print!("  {pc:04X}:\t\t {:04X}\t", instruct.opcode);
 
     match instruct.f_nibble {
@@ -149,6 +149,4 @@ pub fn decode(instruct: Instruction, pc: u16) {
         },
         _ => println!("{}", "UNKNOWN I".red()),
     }
-
-    
 }
