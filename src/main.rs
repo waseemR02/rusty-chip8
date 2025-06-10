@@ -1,4 +1,4 @@
-use std::{process, thread, time::Duration};
+use std::process;
 
 use clap::{Parser, Subcommand};
 use minifb::{Key, Scale, ScaleMode, Window, WindowOptions};
